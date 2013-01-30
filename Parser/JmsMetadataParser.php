@@ -77,7 +77,7 @@ class JmsMetadataParser implements ParserInterface
             if (!is_null($item->type)) {
                 $name = isset($item->serializedName) ? $item->serializedName : $item->name;
 
-                $dataType = $this->processDataType(is_string($item->type) ? $item->type : $item->type['name']);
+                $dataType = $this->processDataType($item->type);
 
                 $params[$name] = array(
                     'dataType' => $dataType['normalized'],
@@ -110,8 +110,17 @@ class JmsMetadataParser implements ParserInterface
      * @param  string $type
      * @return array
      */
-    protected function processDataType($type)
+    protected function processDataType(array $type)
     {
+        if ($this->supportsNesting($type)) {
+            if (isset($type['params']) && count($type['params'])) {
+                $type = sprintf('%s<%s>', $type['name'], $type['params'][0]['name']);
+            }
+
+        } else {
+            $type = $type['name'];
+        }
+
         //could be basic type
         if ($this->isPrimitive($type)) {
             return array(
@@ -148,7 +157,12 @@ class JmsMetadataParser implements ParserInterface
 
     protected function isPrimitive($type)
     {
-        return in_array($type, array('boolean', 'integer', 'string', 'double', 'array', 'DateTime'));
+        return in_array($type, array('boolean', 'integer', 'string', 'double', 'array', 'DateTime', 'ArrayCollection'));
+    }
+
+    protected function supportsNesting(array $type)
+    {
+        return in_array($type['name'], array('array', 'ArrayCollection'));
     }
 
     /**
